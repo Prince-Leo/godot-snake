@@ -5,7 +5,7 @@ const GRID_WIDTH = 30
 const GRID_HEIGHT = 30
 
 @onready var snake = $Snake
-@onready var food_spawner = $FoodSpawner
+@onready var food = $Food
 @onready var score_label = $UI/ScoreLabel
 @onready var game_over_label = $UI/GameOverLabel
 @onready var move_timer = $MoveTimer
@@ -14,7 +14,13 @@ var score: int = 0
 var game_over: bool = false
 
 func _ready():
+	# CRITICAL FIX: Connect the timer signal
+	move_timer.timeout.connect(_on_move_timer_timeout)
 	start_game()
+
+func _draw():
+	# Dark background for the game area
+	draw_rect(Rect2(0, 0, GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), Color(0.1, 0.1, 0.1, 1))
 
 func start_game():
 	score = 0
@@ -22,51 +28,46 @@ func start_game():
 	game_over_label.visible = false
 	update_score()
 	snake.reset()
-	food_spawner.spawn_food()
+	food.spawn()
+	move_timer.wait_time = 0.15
 	move_timer.start()
+	queue_redraw()
 
 func _on_move_timer_timeout():
 	if game_over:
 		return
 	snake.move()
-	check_collision()
+	check_collisions()
 
-func check_collision():
-	var head_pos = snake.get_head_position()
-	
+func check_collisions():
+	var head = snake.get_head_pos()
+
 	# Check wall collision
-	if head_pos.x < 0 or head_pos.x >= GRID_WIDTH * GRID_SIZE or \
-	   head_pos.y < 0 or head_pos.y >= GRID_HEIGHT * GRID_SIZE:
-		on_game_over()
+	if head.x < 0 or head.x >= GRID_WIDTH * GRID_SIZE or \
+	   head.y < 0 or head.y >= GRID_HEIGHT * GRID_SIZE:
+		end_game()
 		return
-	
+
 	# Check self collision
-	var body_positions = snake.get_body_positions()
-	for i in range(1, body_positions.size()):
-		if head_pos == body_positions[i]:
-			on_game_over()
-			return
-	
+	if snake.collides_with_self():
+		end_game()
+		return
+
 	# Check food collision
-	if head_pos == food_spawner.get_food_position():
-		on_food_eaten()
+	if head == food.pos:
+		score += 1
+		update_score()
+		snake.grow()
+		food.spawn()
+		move_timer.wait_time = max(0.05, move_timer.wait_time - 0.002)
 
-func on_food_eaten():
-	score += 1
-	update_score()
-	snake.grow()
-	food_spawner.spawn_food()
-	# Speed up slightly
-	move_timer.wait_time = max(0.05, move_timer.wait_time - 0.002)
-
-func on_game_over():
+func end_game():
 	game_over = true
 	game_over_label.visible = true
 	move_timer.stop()
 
 func _input(event):
 	if game_over and event.is_action_pressed("ui_accept"):
-		move_timer.wait_time = 0.15
 		start_game()
 
 func update_score():

@@ -4,41 +4,31 @@ const GRID_SIZE = 20
 const GRID_WIDTH = 30
 const GRID_HEIGHT = 30
 
-var body_segments: Array = []
+var segments: Array[Vector2] = []
 var direction: Vector2 = Vector2.RIGHT
 var last_direction: Vector2 = Vector2.RIGHT
-var growing: bool = false
-
-signal food_eaten
-signal game_over
+var grow_next: bool = false
 
 func _ready():
 	reset()
 
 func reset():
-	# Clear existing segments
-	for segment in body_segments:
-		segment.queue_free()
-	body_segments.clear()
-	
-	# Create initial 3 segments
+	segments.clear()
+	# Start with 3 segments in the center, heading right
 	for i in range(3):
-		var segment = create_segment()
-		segment.position = Vector2(GRID_WIDTH / 2 - i, GRID_HEIGHT / 2) * GRID_SIZE
-		body_segments.append(segment)
-	
+		segments.append(Vector2(GRID_WIDTH / 2.0 - i, GRID_HEIGHT / 2.0) * GRID_SIZE)
 	direction = Vector2.RIGHT
 	last_direction = Vector2.RIGHT
-	growing = false
+	grow_next = false
+	queue_redraw()
 
-func create_segment() -> ColorRect:
-	var segment = ColorRect.new()
-	segment.size = Vector2(GRID_SIZE - 1, GRID_SIZE - 1)
-	segment.color = Color.GREEN
-	add_child(segment)
-	return segment
+func _draw():
+	# Draw each body segment as a green square
+	for pos in segments:
+		draw_rect(Rect2(pos, Vector2(GRID_SIZE - 1, GRID_SIZE - 1)), Color.GREEN)
 
 func _input(event):
+	# Direction input: prevent 180° reversal
 	if event.is_action_pressed("move_up") and last_direction != Vector2.DOWN:
 		direction = Vector2.UP
 	elif event.is_action_pressed("move_down") and last_direction != Vector2.UP:
@@ -50,32 +40,28 @@ func _input(event):
 
 func move():
 	last_direction = direction
-	
-	var head_pos = body_segments[0].position
-	var new_head_pos = head_pos + direction * GRID_SIZE
-	
-	# Shift body: each segment takes the position of the one before it
-	for i in range(body_segments.size() - 1, 0, -1):
-		body_segments[i].position = body_segments[i - 1].position
-	
-	# Move head to new position
-	body_segments[0].position = new_head_pos
-	
-	# Grow if needed
-	if growing:
-		var new_segment = create_segment()
-		new_segment.position = body_segments[body_segments.size() - 1].position
-		body_segments.append(new_segment)
-		growing = false
+	var new_head = segments[0] + direction * GRID_SIZE
+
+	# Insert new head at the front
+	segments.insert(0, new_head)
+
+	# Remove tail unless we're growing
+	if not grow_next:
+		segments.pop_back()
+	else:
+		grow_next = false
+
+	queue_redraw()
 
 func grow():
-	growing = true
+	grow_next = true
 
-func get_head_position() -> Vector2:
-	return body_segments[0].position if body_segments.size() > 0 else Vector2.ZERO
+func get_head_pos() -> Vector2:
+	return segments[0] if segments.size() > 0 else Vector2.ZERO
 
-func get_body_positions() -> Array:
-	var positions: Array = []
-	for segment in body_segments:
-		positions.append(segment.position)
-	return positions
+func collides_with_self() -> bool:
+	var head = segments[0]
+	for i in range(1, segments.size()):
+		if head == segments[i]:
+			return true
+	return false
