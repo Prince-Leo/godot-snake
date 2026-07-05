@@ -19,8 +19,11 @@ func _ready():
 	start_game()
 
 func _draw():
-	# Dark background for the game area
-	draw_rect(Rect2(0, 0, GRID_WIDTH * GRID_SIZE, GRID_HEIGHT * GRID_SIZE), Color(0.1, 0.1, 0.1, 1))
+	# Gray-white checkerboard background
+	for x in range(GRID_WIDTH):
+		for y in range(GRID_HEIGHT):
+			var color = Color(0.75, 0.75, 0.75, 1) if (x + y) % 2 == 0 else Color(0.9, 0.9, 0.9, 1)
+			draw_rect(Rect2(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE), color)
 
 func start_game():
 	score = 0
