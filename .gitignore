@@ -1,0 +1,17 @@
+# Godot-specific ignores
+.godot/
+*.import
+*.translation
+export_presets.cfg
+
+# Imported translations
+*.po
+*.pot
+
+# Mono-specific ignores
+.mono/
+mono_crash.*.json
+
+# System files
+.DS_Store
+Thumbs.db
